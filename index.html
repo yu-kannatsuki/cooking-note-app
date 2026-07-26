@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>料理ノートアプリ - 完成版</title>
+    <style>
+        :root {
+            --bg-color: #FAF6F0;
+            --text-main: #5C3A21;
+            --text-sub: #8C7A6B;
+            --white: #FFFFFF;
+            --border-color: #E8DFD5;
+            --accent-color: #D4B895;
+            --tag-bg: #F5EFE6;
+            --morning: #E8F5E9;
+            --noon: #FFF3E0;
+            --night: #FFF0F5;
+            --hover-bg: #F0E8DD;
+            --modal-bg: #FAF6F0;
+            --input-bg: #F5EFE6;
+        }
+
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            color: var(--text-main); -webkit-tap-highlight-color: transparent;
+        }
+
+        body { background-color: #EFEFEF; display: flex; justify-content: center; }
+
+        /* スマホの画面にピタッと収めるためのコンテナ設定 */
+        .app-container {
+            width: 100%; max-width: 480px; background-color: var(--bg-color);
+            height: 100dvh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; background-color: var(--bg-color); position: sticky; top: 0; z-index: 20; flex-shrink: 0;
+        }
+        .month-selector { font-size: 24px; font-weight: bold; cursor: pointer; padding: 10px 15px; margin-left: -10px; border-radius: 8px; transition: background 0.2s; }
+        .month-selector:active { background: var(--hover-bg); }
+        .header-icons { display: flex; gap: 5px; }
+        .header-icons span {
+            font-size: 22px; cursor: pointer; width: 44px; height: 44px; display: flex;
+            align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;
+        }
+        .header-icons span:active { background: var(--hover-bg); }
+
+        /* Tabs */
+        .tabs { 
+            display: flex; flex-wrap: nowrap; background-color: var(--white); 
+            border-bottom: 1px solid var(--border-color); z-index: 15; flex-shrink: 0;
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            padding: 14px 12px; flex: 0 0 auto; min-width: 16.6%; text-align: center; font-weight: bold; font-size: 13px;
+            cursor: pointer; color: var(--text-sub); border-bottom: 3px solid transparent; transition: background 0.2s; white-space: nowrap;
+        }
+        .tab:active { background: #F9F9F9; }
+        .tab.active { color: var(--text-main); border-bottom: 3px solid var(--text-main); }
+
+        /* Content Area */
+        .content { 
+            flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; padding-bottom: 100px; 
+            width: 100%; -webkit-overflow-scrolling: touch;
+        }
+        .view { display: none; width: 100%; animation: fadeIn 0.2s ease-out; }
+        .view.active { display: block; }
+
+        /* Calendar Grid（拡大崩れ防止を徹底） */
+        .calendar-header { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 12px; margin-bottom: 10px; color: var(--text-sub); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; background-color: var(--border-color); border: 1px solid var(--border-color); width: 100%; }
+        .day { background-color: var(--white); aspect-ratio: 1 / 1.25; display: flex; flex-direction: column; font-size: 10px; position: relative; cursor: pointer; overflow: hidden; }
+        .day:active { background-color: #FAFAFA; }
+        .day-num-container { padding: 2px; flex-shrink: 0; }
+        .day-num { padding: 2px 4px; color: var(--text-sub); display: inline-block; }
+        
+        /* 画像を枠内に強制的に収めるラッパー */
+        .day-img-wrap { flex: 1; width: 100%; min-height: 0; overflow: hidden; }
+        .day-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .menu-item { font-size: 8px; padding: 2px; margin: 1px; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-morning { background-color: var(--morning); }
+        .menu-noon { background-color: var(--noon); }
+        .menu-night { background-color: var(--night); }
+
+        /* Detail View */
+        .detail-card { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .detail-img { width: 100%; height: 200px; object-fit: cover; }
+        .detail-content { padding: 15px; }
+        .detail-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        .detail-section { margin-bottom: 15px; background: var(--tag-bg); padding: 12px; border-radius: 8px; }
+        .section-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+
+        /* Sub-Tabs */
+        .sub-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .sub-tab { flex: 1; text-align: center; padding-bottom: 10px; cursor: pointer; color: var(--text-sub); border-bottom: 2px solid transparent; font-weight: bold; margin-bottom: -1px; transition: 0.2s; }
+        .sub-tab.active { color: var(--text-main); border-bottom: 2px solid var(--text-main); }
+        .sub-tab .count { font-size: 12px; font-weight: normal; color: inherit; margin-left: 4px; }
+        .sub-view { display: none; animation: fadeIn 0.2s ease-out; }
+        .sub-view.active { display: block; }
+        .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag { background: var(--white); padding: 6px 12px; border-radius: 20px; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;}
+        
+        /* Search Results Grid */
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+        .summary-grid img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: absolute; bottom: 0; width: 100%; background-color: var(--white);
+            display: flex; justify-content: space-around; padding: 10px 0 25px 0;
+            border-top: 1px solid var(--border-color); z-index: 20;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--text-sub); cursor: pointer; flex: 1; padding: 8px 0; transition: background 0.2s; border-radius: 8px; }
+        .nav-item:active { background-color: var(--hover-bg); }
+        .nav-item.active { color: var(--text-main); font-weight: bold; }
+
+        /* Modals */
+        .modal-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-box { background: var(--modal-bg); width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto; border-radius: 24px; padding: 20px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-close-left { display: inline-flex; width: 40px; height: 40px; justify-content: center; align-items: center; background: var(--white); border-radius: 50%; font-size: 20px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .modal-close-left:active { background-color: var(--hover-bg); }
+        .modal-close { position: absolute; top: 10px; right: 10px; font-size: 24px; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-sub); border-radius: 50%; }
+        .modal-close:active { background-color: var(--border-color); }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; color: var(--text-main); }
+
+        /* UI Blocks */
+        .record-block { background: var(--input-bg); border-radius: 16px; padding: 20px 16px; margin-bottom: 20px; font-size: 14px; font-weight: bold; width: 100%; box-sizing: border-box; }
+        .record-block.white-bg { background: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+
+        .form-input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--white); font-size: 16px; outline:none; }
+        .form-label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-sub); }
+        .form-group { margin-bottom: 15px; }
+        .btn-primary { width: 100%; padding: 16px; background: var(--text-main); color: var(--white); border: none; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 10px rgba(92, 58, 33, 0.2); transition: 0.2s; }
+        .btn-primary:active { opacity: 0.8; transform: scale(0.98); }
+
+        [contenteditable="true"] { outline: none; transition: background 0.2s; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+        [contenteditable="true"]:focus { background: var(--bg-color); box-shadow: 0 0 0 2px var(--bg-color); }
+        [contenteditable="true"]:empty:before { content: attr(data-placeholder); color: var(--text-sub); opacity: 0.7; }
+
+        /* Inventory UI */
+        .inv-item { display: flex; flex-direction: column; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); }
+        .inv-item:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+        .inv-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .inv-icon { font-size: 24px; background: var(--tag-bg); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; flex-shrink: 0; }
+        .inv-info { flex: 1; margin-left: 12px; }
+        .inv-info h4 { font-size: 16px; margin-bottom: 4px; outline: none; }
+        .inv-info p { font-size: 12px; color: var(--text-sub); margin-bottom: 2px; outline: none; }
+        .inv-controls { display: flex; align-items: center; gap: 8px; }
+        .inv-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-color); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; color: var(--text-main); }
+        .inv-btn:active { background: var(--hover-bg); }
+        .inv-amount-text { font-size: 16px; font-weight: bold; width: 50px; text-align: center; background: transparent; border: none; border-bottom: 1px solid transparent; outline: none; color: var(--text-main); padding: 2px 0; transition: 0.2s;}
+        .inv-amount-text:focus { border-bottom: 1px solid var(--text-main); }
+        
+        .toast { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(92, 58, 33, 0.9); color: white; padding: 12px 24px; border-radius: 25px; font-size: 14px; display: none; z-index: 200; white-space: nowrap; }
+        
+        .emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; max-height: 300px; overflow-y: auto; padding-right: 5px;}
+        .emoji-btn { font-size: 28px; text-align: center; cursor: pointer; padding: 8px; border-radius: 8px; background: var(--white); border: 1px solid var(--border-color); transition: 0.2s;}
+        .emoji-btn:active { background: var(--hover-bg); transform: scale(0.9); }
+
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 8px; margin: 0 -8px; border-bottom: 1px solid var(--border-color); cursor: pointer; border-radius: 8px; transition: background 0.2s; }
+        .settings-row:active { background: var(--hover-bg); }
+        .settings-row:last-child { border-bottom: none; }
+        
+        /* 支出アイテム */
+        .expense-item { transition: background 0.2s; cursor: pointer; border-radius: 8px; padding: 8px; margin: -8px; }
+        .expense-item:active { background: var(--hover-bg); }
+        
+        /* グラフ用 */
+        .chart-bar-wrapper { flex: 1; display: flex; justify-content: center; height: 100%; align-items: flex-end; position: relative; cursor: pointer; }
+        .chart-bar { width: 65%; background: var(--accent-color); border-radius: 4px 4px 0 0; transition: height 0.3s ease; position: relative; }
+        .chart-bar.current { background: var(--text-main); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="month-selector" onclick="openModal('month-modal')">
+            <span id="current-month-display">7月</span> ▾
+        </div>
+        <div class="header-icons">
+            <span onclick="openModal('settings-modal')" title="設定">⚙️</span>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchView('photo-calendar', this)">写真</div>
+        <div class="tab" onclick="switchView('text-calendar', this)">献立表</div>
+        <div class="tab" onclick="switchView('detail-view', this)">詳細</div>
+        <div class="tab" onclick="switchView('materials-view', this)">材料</div>
+        <div class="tab" onclick="switchView('expense-view', this)">食費</div>
+        <div class="tab" onclick="switchView('inventory-view', this)">在庫</div>
+    </div>
+
+    <div class="content">
+        <!-- View 1: 写真カレンダー -->
+        <div id="photo-calendar" class="view active">
+            <div class="calendar-header">
+                <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+            </div>
+            <div class="calendar-grid" id="photo-grid"></div>
+        </div>
+
+        <!-- View 2: 献立カレンダー -->
+        <div id="text-calendar" class="view">
+            <div class="calendar-header">
+                <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+            </div>
+            <div class="calendar-grid" id="text-grid"></div>
+        </div>
+
+        <!-- View 3: 詳細 -->
+        <div id="detail-view" class="view">
+            <div class="detail-card">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400" alt="麻婆豆腐" class="detail-img">
+                <div class="detail-content">
+                    <div class="detail-title">麻婆豆腐</div>
+                    <div class="detail-section">
+                        <div class="section-title">材料 ✏️</div>
+                        <div style="font-size: 14px; line-height: 1.6;">
+                            🐖豚ひき肉 ⬜豆腐 🥬長ネギ 🫙鶏がらスープ<br>
+                            🫙味噌 🫙醤油 🌶️豆板醤 🧄にんにく
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 4: 材料・カテゴリ -->
+        <div id="materials-view" class="view">
+            <div class="sub-tabs">
+                <div class="sub-tab active" onclick="switchSubView('ingredients-list', this)">材料 <span class="count">216</span></div>
+                <div class="sub-tab" onclick="switchSubView('categories-list', this)">カテゴリ <span class="count">32</span></div>
+            </div>
+            <div id="ingredients-list" class="sub-view active">
+                <div class="tags">
+                    <div class="tag" onclick="fillSearchAndExecute('トマト')">🍅 トマト <span>24</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('玉ねぎ')">🧅 玉ねぎ <span>37</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('たまご')">🥚 たまご <span>21</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('マッシュルーム')">🍄 マッシュルーム <span>3</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('ベーコン')">🥓 ベーコン <span>8</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('牛乳')">🐄 牛乳 <span>4</span></div>
+                </div>
+            </div>
+            <div id="categories-list" class="sub-view">
+                <div class="tags">
+                    <div class="tag" onclick="fillSearchAndExecute('主菜')">🥘 主菜 <span>15</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('副菜')">🥗 副菜 <span>12</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('中華')">🇨🇳 中華 <span>5</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('洋食')">🍝 洋食 <span>4</span></div>
+                    <div class="tag" onclick="fillSearchAndExecute('お弁当')">🍱 お弁当 <span>8</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 5: 食費管理 -->
+        <div id="expense-view" class="view">
+            <div class="record-block white-bg" style="position: relative;">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                    <button style="display: flex; align-items: center; gap: 4px; color: var(--text-main); cursor: pointer; padding: 8px 12px; border-radius: 8px; background: transparent; border: 1px solid var(--border-color); font-weight: bold; outline: none;" onclick="openModal('budget-modal')">
+                        <span style="font-size: 16px;">⚙️</span> <span>設定</span>
+                    </button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <button style="width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 20px; background: transparent; border: none; color: var(--text-main); outline: none;" onclick="prevMonthExpense()">◀︎</button>
+                    <h3 id="expense-month-display" style="font-size: 18px; margin: 0; color: var(--text-main);">2026年7月の食費</h3>
+                    <button style="width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; font-size: 20px; background: transparent; border: none; color: var(--text-main); outline: none;" onclick="nextMonthExpense()">▶︎</button>
+                </div>
+                <div style="text-align: center;">
+                    <div id="expense-total-display" style="font-size: 42px; font-weight: bold; color: var(--text-main); margin-bottom: 5px;">¥24,500</div>
+                    <div style="font-size: 14px; color: var(--text-sub); margin-bottom: 25px;">
+                        予算 <span id="budget-display">¥30,000</span> まで あと <span id="expense-remain-display" style="color: #D9534F; font-weight: bold;">¥5,500</span>
+                    </div>
+                    <div style="width: 100%; background: var(--border-color); height: 16px; border-radius: 8px; overflow: hidden; display: flex;">
+                        <div id="expense-progress-bar" style="width: 81%; background: var(--accent-color); height: 100%; transition: width 0.5s ease-in-out;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-main); font-weight: bold;">
+                        <span>¥0</span>
+                        <span id="budget-max-display">¥30,000</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="record-block white-bg">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="font-size: 16px; margin: 0;">最近の出費</h3>
+                    <button style="background: var(--tag-bg); color: var(--text-main); padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; outline: none;" onclick="openAddExpenseModal()">＋ 追加</button>
+                </div>
+                <div id="expense-list-container"></div>
+            </div>
+
+            <!-- 年間グラフ (UI完全修正版) -->
+            <div class="record-block white-bg">
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <div onclick="prevYearGraph()" style="cursor: pointer; font-size: 20px; color: var(--text-main);">◀︎</div>
+                    <h3 id="expense-year-display" style="font-size: 18px; margin: 0; color: var(--text-main);">2026年の年間グラフ</h3>
+                    <div onclick="nextYearGraph()" style="cursor: pointer; font-size: 20px; color: var(--text-main);">▶︎</div>
+                </div>
+                
+                <div style="font-size: 10px; color: var(--text-main); font-weight: bold; margin-bottom: 5px; padding-left: 5px;">(円)</div>
+                <div style="display: flex; height: 160px; padding-bottom: 20px;">
+                    <div id="expense-graph-yaxis" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-right: 8px; font-size: 10px; color: var(--text-main); width: 40px; flex-shrink: 0; font-weight: bold;"></div>
+                    
+                    <div style="flex: 1; position: relative; display: flex; margin-right: 25px;">
+                        <div style="position: absolute; bottom: 0; left: 0; width: 100%; border-bottom: 1px solid var(--border-color); z-index: 1;"></div>
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; border-top: 1px dashed var(--border-color); z-index: 1;"></div>
+                        <div style="position: absolute; top: 50%; left: 0; width: 100%; border-top: 1px dashed var(--border-color); z-index: 1;"></div>
+                        
+                        <div id="expense-graph-bars" style="display: flex; align-items: flex-end; justify-content: space-between; width: 100%; height: 100%; position: relative; z-index: 5;"></div>
+
+                        <div style="position: absolute; bottom: -20px; left: 0; width: 100%; display: flex; justify-content: space-between; font-size: 10px; color: var(--text-main); font-weight: bold; margin: 0;">
+                            <div style="flex: 1; text-align: center;">1</div><div style="flex: 1; text-align: center;">2</div><div style="flex: 1; text-align: center;">3</div>
+                            <div style="flex: 1; text-align: center;">4</div><div style="flex: 1; text-align: center;">5</div><div style="flex: 1; text-align: center;">6</div>
+                            <div style="flex: 1; text-align: center;">7</div><div style="flex: 1; text-align: center;">8</div><div style="flex: 1; text-align: center;">9</div>
+                            <div style="flex: 1; text-align: center;">10</div><div style="flex: 1; text-align: center;">11</div><div style="flex: 1; text-align: center;">12</div>
+                        </div>
+                        <div style="position: absolute; bottom: -20px; right: -25px; font-size: 10px; color: var(--text-main); font-weight: bold;">(月)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 6: 食品在庫管理 -->
+        <div id="inventory-view" class="view">
+            <div class="sub-tabs">
+                <div class="sub-tab active" onclick="switchSubView('inv-fridge', this)">冷蔵庫</div>
+                <div class="sub-tab" onclick="switchSubView('inv-freezer', this)">冷凍庫</div>
+                <div class="sub-tab" onclick="switchSubView('inv-room', this)">常温</div>
+            </div>
+
+            <!-- 冷蔵庫 -->
+            <div id="inv-fridge" class="sub-view active">
+                <div class="record-block white-bg">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin: 0;">冷蔵庫の在庫</h3>
+                        <button style="background: var(--tag-bg); color: var(--text-main); padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; outline: none;" onclick="openAddInventoryModal('inv-fridge-list')">＋ 追加</button>
+                    </div>
+                    <div id="inv-fridge-list">
+                        <div class="inv-item">
+                            <div class="inv-main">
+                                <div class="inv-icon" onclick="openEmojiPicker(this)">🥚</div>
+                                <div class="inv-info">
+                                    <h4 contenteditable="true" data-placeholder="品名">たまご</h4>
+                                    <p contenteditable="true" data-placeholder="期限など">期限: 7月30日</p>
+                                    <p contenteditable="true" data-placeholder="購入金額">購入: ¥250</p>
+                                </div>
+                                <div class="inv-controls">
+                                    <button class="inv-btn" onclick="updateInvAmount(this, -1)">-</button>
+                                    <div contenteditable="true" class="inv-amount-text" data-placeholder="数量">4 個</div>
+                                    <button class="inv-btn" onclick="updateInvAmount(this, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="inv-item">
+                            <div class="inv-main">
+                                <div class="inv-icon" onclick="openEmojiPicker(this)">🥛</div>
+                                <div class="inv-info">
+                                    <h4 contenteditable="true" data-placeholder="品名">牛乳</h4>
+                                    <p contenteditable="true" data-placeholder="期限など">期限: 7月28日</p>
+                                    <p contenteditable="true" data-placeholder="購入金額">購入: ¥198</p>
+                                </div>
+                                <div class="inv-controls">
+                                    <button class="inv-btn" onclick="updateInvAmount(this, -1)">-</button>
+                                    <div contenteditable="true" class="inv-amount-text" data-placeholder="数量">1 本</div>
+                                    <button class="inv-btn" onclick="updateInvAmount(this, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 冷凍庫 -->
+            <div id="inv-freezer" class="sub-view">
+                <div class="record-block white-bg">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin: 0;">冷凍庫の在庫</h3>
+                        <button style="background: var(--tag-bg); color: var(--text-main); padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; outline: none;" onclick="openAddInventoryModal('inv-freezer-list')">＋ 追加</button>
+                    </div>
+                    <div id="inv-freezer-list">
+                        <div class="inv-item">
+                            <div class="inv-main">
+                                <div class="inv-icon" onclick="openEmojiPicker(this)">🥩</div>
+                                <div class="inv-info">
+                                    <h4 contenteditable="true" data-placeholder="品名">豚ひき肉</h4>
+                                    <p contenteditable="true" data-placeholder="期限など">小分け冷凍</p>
+                                    <p contenteditable="true" data-placeholder="購入金額">購入: ¥450</p>
+                                </div>
+                                <div class="inv-controls">
+                                    <button class="inv-btn" onclick="updateInvAmount(this, -1)">-</button>
+                                    <div contenteditable="true" class="inv-amount-text" data-placeholder="数量">2 PK</div>
+                                    <button class="inv-btn" onclick="updateInvAmount(this, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 常温 -->
+            <div id="inv-room" class="sub-view">
+                <div class="record-block white-bg">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin: 0;">常温の在庫</h3>
+                        <button style="background: var(--tag-bg); color: var(--text-main); padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; outline: none;" onclick="openAddInventoryModal('inv-room-list')">＋ 追加</button>
+                    </div>
+                    <div id="inv-room-list">
+                        <div class="inv-item">
+                            <div class="inv-main">
+                                <div class="inv-icon" onclick="openEmojiPicker(this)">🧅</div>
+                                <div class="inv-info">
+                                    <h4 contenteditable="true" data-placeholder="品名">玉ねぎ</h4>
+                                    <p contenteditable="true" data-placeholder="期限など">風通しの良い所</p>
+                                    <p contenteditable="true" data-placeholder="購入金額">購入: ¥150</p>
+                                </div>
+                                <div class="inv-controls">
+                                    <button class="inv-btn" onclick="updateInvAmount(this, -1)">-</button>
+                                    <div contenteditable="true" class="inv-amount-text" data-placeholder="数量">3 個</div>
+                                    <button class="inv-btn" onclick="updateInvAmount(this, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 検索結果 View -->
+        <div id="search-results-view" class="view">
+            <div class="record-block white-bg" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding: 12px 15px;">
+                <div style="font-weight: bold; font-size: 14px;">検索結果</div>
+                <div class="tag" style="background: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 14px;" onclick="clearSearch()">
+                    <span id="search-keyword-display" style="color: var(--white);">豚肉</span>
+                    <span style="font-size: 16px; margin-left: 2px; color: var(--white);">×</span>
+                </div>
+            </div>
+            <div class="summary-grid">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=150&h=150" alt="dish">
+                <img src="https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=150&h=150" alt="dish">
+                <img src="https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=150&h=150" alt="dish">
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" id="nav-calendar" onclick="navToCalendar()">
+            <span style="font-size: 24px; margin-bottom: 4px;">📅</span>
+            カレンダー
+        </div>
+        <div class="nav-item" onclick="openModal('record-modal')">
+            <span style="font-size: 24px; margin-bottom: 4px;">➕</span>
+            記録する
+        </div>
+        <div class="nav-item" onclick="openModal('search-modal')">
+            <span style="font-size: 24px; margin-bottom: 4px;">🔍</span>
+            さがす
+        </div>
+    </div>
+
+    <div id="toast" class="toast">アクションを実行しました</div>
+
+    <!-- === Modals === -->
+
+    <!-- 在庫追加モーダル -->
+    <div id="add-inventory-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'add-inventory-modal')">
+        <div class="modal-box" style="padding: 20px; max-width: 360px;">
+            <div class="modal-close-left" onclick="closeModal('add-inventory-modal')">×</div>
+            <div class="modal-title">在庫の追加</div>
+            <input type="hidden" id="inv-target-container">
+            <div class="form-group" style="display: flex; gap: 15px; align-items: center;">
+                <div id="inv-new-icon" class="inv-icon" style="width:60px; height:60px; font-size:30px;" onclick="openEmojiPicker(this)">📦</div>
+                <div style="flex:1;">
+                    <label class="form-label">アイコン (タップで変更)</label>
+                    <input type="text" id="inv-new-name" class="form-input" placeholder="品名 (例: トマト)">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">数量</label>
+                    <input type="text" id="inv-new-amount" class="form-input" value="1">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">単位</label>
+                    <input type="text" id="inv-new-unit" class="form-input" placeholder="個, パック等" value="個">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">購入金額 (任意)</label>
+                <input type="number" id="inv-new-price" class="form-input" placeholder="¥">
+            </div>
+            <div class="form-group">
+                <label class="form-label">期限・メモ</label>
+                <input type="text" id="inv-new-memo" class="form-input" placeholder="例: 7月30日まで">
+            </div>
+            <button class="btn-primary" onclick="submitInventoryItem()">追加する</button>
+        </div>
+    </div>
+
+    <!-- 絵文字ピッカー・モーダル -->
+    <div id="emoji-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'emoji-modal')" style="z-index: 150;">
+        <div class="modal-box" style="padding: 20px; max-width: 320px;">
+            <div class="modal-close-left" onclick="closeModal('emoji-modal')">×</div>
+            <div class="modal-title">アイコンを選択</div>
+            <div class="emoji-grid" id="emoji-grid-container"></div>
+        </div>
+    </div>
+
+    <!-- 食費：予算設定モーダル -->
+    <div id="budget-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'budget-modal')">
+        <div class="modal-box" style="padding: 20px; max-width: 320px;">
+            <div class="modal-close-left" onclick="closeModal('budget-modal')">×</div>
+            <div class="modal-title">予算設定</div>
+            <div class="form-group">
+                <label class="form-label">1ヶ月の食費予算 (円)</label>
+                <input type="number" id="budget-input" class="form-input" placeholder="例: 30000">
+            </div>
+            <button class="btn-primary" onclick="saveBudget()">保存する</button>
+        </div>
+    </div>
+
+    <!-- 食費：出費の追加・編集モーダル -->
+    <div id="add-expense-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'add-expense-modal')">
+        <div class="modal-box" style="padding: 20px; max-width: 340px;">
+            <div class="modal-close-left" onclick="closeModal('add-expense-modal')">×</div>
+            <div class="modal-title" id="expense-modal-title">出費の追加</div>
+            
+            <input type="hidden" id="expense-edit-id">
+            <input type="hidden" id="expense-edit-year">
+            <input type="hidden" id="expense-edit-month">
+
+            <div class="form-group">
+                <label class="form-label">日付</label>
+                <input type="date" id="expense-date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">金額 (円)</label>
+                <input type="number" id="expense-amount" class="form-input" placeholder="例: 1500">
+            </div>
+            <div class="form-group">
+                <label class="form-label">店名・内容</label>
+                <input type="text" id="expense-store" class="form-input" placeholder="例: スーパーA">
+            </div>
+            <div class="form-group">
+                <label class="form-label">カテゴリ</label>
+                <select id="expense-category" class="form-input" style="appearance: auto;">
+                    <option value="🛒,食材">🛒 食材</option>
+                    <option value="🥬,野菜">🥬 野菜</option>
+                    <option value="🥩,肉類">🥩 肉類</option>
+                    <option value="🐟,魚介">🐟 魚介</option>
+                    <option value="🍞,パン・主食">🍞 パン・主食</option>
+                    <option value="🍬,お菓子">🍬 お菓子</option>
+                    <option value="🥤,飲料">🥤 飲料</option>
+                    <option value="🍽️,外食">🍽️ 外食</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="expense-delete-btn" class="btn-primary" style="background: #D9534F; display: none;" onclick="deleteExpense()">削除する</button>
+                <button id="expense-save-btn" class="btn-primary" style="margin-top: 0;" onclick="saveExpense()">追加する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 【完全版】料理記録モーダル（レイアウト完全再現） -->
+    <div id="record-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'record-modal')">
+        <div class="modal-box" style="padding: 25px 20px; max-width: 380px; background: var(--bg-color); border-radius: 30px;">
+            <div class="modal-close-left" onclick="closeModal('record-modal')">×</div>
+            
+            <div style="text-align: center; margin-bottom: 25px; position: relative;">
+                <input type="date" id="record-date" style="background: transparent; border: none; outline: none; font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center;">
+            </div>
+
+            <!-- 時間帯セレクター -->
+            <div style="display: flex; justify-content: space-between; padding: 5px; margin-bottom: 25px; border-radius: 30px; background: var(--input-bg);">
+                <div class="time-btn" onclick="selectTime(this)" style="flex:1; text-align:center; padding: 10px 0; border-radius:25px; font-size:12px; color:var(--text-sub); cursor:pointer; transition:0.2s;">指定なし</div>
+                <div class="time-btn" onclick="selectTime(this)" style="flex:1; text-align:center; padding: 10px 0; border-radius:25px; font-size:12px; color:var(--text-sub); cursor:pointer; transition:0.2s;">☀朝</div>
+                <div class="time-btn" onclick="selectTime(this)" style="flex:1; text-align:center; padding: 10px 0; border-radius:25px; font-size:12px; color:var(--text-sub); cursor:pointer; transition:0.2s;">🌤昼</div>
+                <div class="time-btn active" onclick="selectTime(this)" style="flex:1; text-align:center; padding: 10px 0; border-radius:25px; font-size:12px; color:var(--text-main); font-weight:bold; background:var(--white); box-shadow:0 2px 5px rgba(0,0,0,0.05); cursor:pointer; transition:0.2s;">🌙夕</div>
+                <div class="time-btn" onclick="selectTime(this)" style="flex:1; text-align:center; padding: 10px 0; border-radius:25px; font-size:12px; color:var(--text-sub); cursor:pointer; transition:0.2s;">☕間食</div>
+            </div>
+
+            <!-- 写真セクション -->
+            <div style="margin-bottom: 25px;">
+                <div style="font-size: 16px; font-weight: bold; color: var(--text-main); margin-bottom: 10px;">写真</div>
+                <label for="camera-input" style="background: var(--white); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px 15px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
+                    <span style="font-size: 24px;">📷</span> 
+                    <span style="font-size: 14px; color: var(--text-main);">カメラを起動 / フォルダから選択</span>
+                </label>
+                <input type="file" id="camera-input" accept="image/*" style="display:none" onchange="handleMainPhotoUpload(event)">
+                <div id="photo-preview-container" style="display: none; width: 100%; margin-top: 15px;">
+                    <img id="photo-preview" style="width: 100%; max-height: 200px; border-radius: 12px; object-fit: cover;">
+                </div>
+            </div>
+
+            <!-- 料理セクション -->
+            <div style="background: var(--white); border-radius: 16px; padding: 20px 15px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="font-size: 16px; font-weight: bold; margin: 0; color: var(--text-main);">料理</h3>
+                    <span style="font-size: 18px; cursor: pointer;" onclick="addDishRecord()">✏️</span>
+                </div>
+                
+                <div id="dish-record-list-container">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color);">
+                        <div style="flex: 1; padding-right: 15px;">
+                            <h4 contenteditable="true" data-placeholder="料理名を入力" style="font-size: 14px; margin-bottom: 5px;">麻婆豆腐</h4>
+                            <p contenteditable="true" data-placeholder="材料を入力" style="font-size: 11px; color: var(--text-sub); line-height: 1.4;">豚ひき肉, 豆腐, 長ネギ, 鶏がらスープ...</p>
+                        </div>
+                        <label style="width: 50px; height: 50px; border-radius: 8px; background: var(--tag-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; flex-shrink: 0;">
+                            <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=100&h=100" class="dish-sub-img" style="width: 100%; height: 100%; object-fit: cover;">
+                            <input type="file" accept="image/*" style="display:none" onchange="handleSubPhotoUpload(event, this)">
+                        </label>
+                    </div>
+                </div>
+                
+                <button onclick="addDishRecord()" style="background: transparent; border: 1px solid var(--border-color); border-radius: 20px; padding: 8px 24px; font-size: 12px; font-weight: bold; color: var(--text-sub); cursor: pointer; display: block; margin: 15px auto 0;">＋ 料理を追加</button>
+            </div>
+
+            <!-- メモセクション -->
+            <div style="background: var(--white); border-radius: 16px; padding: 20px 15px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <span style="font-size: 18px;">📝</span> <h3 style="font-size: 16px; font-weight: bold; margin: 0; color: var(--text-main);">メモ</h3>
+                </div>
+                <textarea placeholder="メモを入力..." style="width: 100%; border: none; outline: none; resize: none; font-family: inherit; font-size: 14px; color: var(--text-main); min-height: 60px; background: transparent;"></textarea>
+            </div>
+
+            <button class="btn-primary" style="margin-top: 0; box-shadow: 0 4px 10px rgba(92, 58, 33, 0.3);" onclick="saveRecord()">保存する</button>
+        </div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settings-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'settings-modal')">
+        <div class="modal-box" style="max-width: 300px;">
+            <span class="modal-close" onclick="closeModal('settings-modal')">&times;</span>
+            <div class="modal-title">設定</div>
+            <div class="settings-row" onclick="changeTheme()" style="border-bottom: none;">
+                <span>テーマカラー</span>
+                <span id="theme-status" style="color:var(--text-sub)">ブラウン &gt;</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- さがすモーダル -->
+    <div id="search-modal" class="modal-overlay" onclick="closeModalOnBgClick(event, 'search-modal')">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('search-modal')">&times;</span>
+            <div class="modal-title">料理をさがす</div>
+            <div class="form-group">
+                <input type="text" id="search-input" class="form-input" placeholder="料理名や材料で検索..." style="margin-bottom: 15px;">
+            </div>
+            <div class="tags" style="margin-bottom: 15px; justify-content: center;">
+                <div class="tag" style="cursor:pointer" onclick="fillSearch('豚肉')">🐖 豚肉</div>
+                <div class="tag" style="cursor:pointer" onclick="fillSearch('中華')">🇨🇳 中華</div>
+                <div class="tag" style="cursor:pointer" onclick="fillSearch('お弁当')">🍱 お弁当</div>
+            </div>
+            <button class="btn-primary" onclick="executeSearch()">検索</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const today = new Date(2026, 6, 25);
+    let currentViewDate = new Date(today);
+    
+    let expYear = 2026;
+    let expMonth = 6; 
+    let userBudget = 30000;
+    let expensesData = {};
+    let graphYear = 2026;
+
+    const foodEmojis = [
+        "🍞","🥐","🥖","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥚","🍳","🥘","🍲","🥗","🧈","🍝",
+        "🍱","🍘","🍙","🍚","🍛","🍜","🍠","🍢","🍣","🍤","🍥","🍡","🥟","🥡",
+        "🍎","🍏","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🍆","🥔","🥕","🌽","🌶️","🥒","🥬","🥦","🧄","🧅","🍄",
+        "🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯","🥛","☕","🫖","🍵","🍶","🍾","🍷","🍺","🍻","🧃","🧊","📦","🥫"
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            generateDummyExpenses();
+            renderCalendar();
+            renderMonthSelector();
+            updateExpenseView();
+            setupEmojiPicker();
+            
+            const dateInput = document.getElementById('record-date');
+            if(dateInput) {
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
+    // --- 在庫管理 ---
+    function updateInvAmount(btn, change) {
+        const amountInput = btn.parentElement.querySelector('.inv-amount-text');
+        let text = amountInput.innerText;
+        let match = text.match(/([0-9]+(\.[0-9]+)?)/);
+        let num = match ? parseFloat(match[1]) : 0;
+        let unit = text.replace(/[0-9.-]+/g,"").trim(); 
+        
+        let next = num + change;
+        if (next < 0) next = 0; 
+        
+        let nextStr = (next % 1 !== 0) ? next.toFixed(1) : next;
+        amountInput.innerText = unit ? `${nextStr} ${unit}` : nextStr;
+    }
+
+    function openAddInventoryModal(targetContainerId) {
+        document.getElementById('inv-target-container').value = targetContainerId;
+        document.getElementById('inv-new-icon').innerText = '📦';
+        document.getElementById('inv-new-name').value = '';
+        document.getElementById('inv-new-amount').value = '1';
+        document.getElementById('inv-new-unit').value = '個';
+        document.getElementById('inv-new-price').value = '';
+        document.getElementById('inv-new-memo').value = '';
+        openModal('add-inventory-modal');
+    }
+
+    function submitInventoryItem() {
+        const containerId = document.getElementById('inv-target-container').value;
+        const container = document.getElementById(containerId);
+        
+        const icon = document.getElementById('inv-new-icon').innerText;
+        const name = document.getElementById('inv-new-name').value || "名称未設定";
+        const amount = document.getElementById('inv-new-amount').value || 1;
+        const unit = document.getElementById('inv-new-unit').value || "個";
+        const price = document.getElementById('inv-new-price').value;
+        const memo = document.getElementById('inv-new-memo').value;
+
+        const newItem = document.createElement('div');
+        newItem.className = 'inv-item';
+        
+        let priceHtml = price ? `<p contenteditable="true" data-placeholder="前回金額">購入: ¥${price}</p>` : `<p contenteditable="true" data-placeholder="前回金額"></p>`;
+        
+        newItem.innerHTML = `
+            <div class="inv-main">
+                <div class="inv-icon" onclick="openEmojiPicker(this)">${icon}</div>
+                <div class="inv-info">
+                    <h4 contenteditable="true" data-placeholder="品名">${name}</h4>
+                    <p contenteditable="true" data-placeholder="期限など">${memo}</p>
+                    ${priceHtml}
+                </div>
+                <div class="inv-controls">
+                    <button class="inv-btn" onclick="updateInvAmount(this, -1)">-</button>
+                    <div contenteditable="true" class="inv-amount-text" data-placeholder="数量">${amount} ${unit}</div>
+                    <button class="inv-btn" onclick="updateInvAmount(this, 1)">+</button>
+                </div>
+            </div>
+        `;
+        
+        const items = container.querySelectorAll('.inv-item');
+        if (items.length > 0) {
+            items[items.length - 1].style.borderBottom = '1px dashed var(--border-color)';
+            items[items.length - 1].style.paddingBottom = '15px';
+            items[items.length - 1].style.marginBottom = '15px';
+        }
+        container.appendChild(newItem);
+        
+        const newItems = container.querySelectorAll('.inv-item');
+        newItems[newItems.length - 1].style.borderBottom = 'none';
+        newItems[newItems.length - 1].style.paddingBottom = '0';
+        newItems[newItems.length - 1].style.marginBottom = '0';
+        
+        showToast("在庫を追加しました");
+        closeModal('add-inventory-modal');
+    }
+
+    // --- 絵文字ピッカー ---
+    let currentEmojiTarget = null;
+    function setupEmojiPicker() {
+        const container = document.getElementById('emoji-grid-container');
+        let html = '';
+        foodEmojis.forEach(emoji => {
+            html += `<div class="emoji-btn" onclick="selectEmoji('${emoji}')">${emoji}</div>`;
+        });
+        container.innerHTML = html;
+    }
+    function openEmojiPicker(element) {
+        currentEmojiTarget = element;
+        openModal('emoji-modal');
+    }
+    function selectEmoji(emoji) {
+        if(currentEmojiTarget) { currentEmojiTarget.innerText = emoji; }
+        closeModal('emoji-modal');
+    }
+
+    // --- 食費管理 ---
+    function generateDummyExpenses() {
+        const getId = () => 'exp_' + Math.random().toString(36).substr(2, 9);
+        expensesData[2025] = {};
+        for(let m=0; m<12; m++) {
+            expensesData[2025][m] = [ { id: getId(), amount: 20000 + Math.floor(Math.random()*15000), store: "食費合計", date: `2025-${String(m+1).padStart(2,'0')}-15`, category: "🛒", categoryName: "食材" } ];
+        }
+        expensesData[2026] = {};
+        for(let m=0; m<6; m++) {
+            expensesData[2026][m] = [ { id: getId(), amount: 25000 + Math.floor(Math.random()*6000), store: "食費合計", date: `2026-${String(m+1).padStart(2,'0')}-15`, category: "🛒", categoryName: "食材" } ];
+        }
+        expensesData[2026][6] = [
+            { id: getId(), amount: 3200, store: "スーパーA", date: "2026-07-24", category: "🛒", categoryName: "食材" },
+            { id: getId(), amount: 850, store: "八百屋B", date: "2026-07-22", category: "🥬", categoryName: "野菜" },
+            { id: getId(), amount: 1500, store: "精肉店C", date: "2026-07-20", category: "🥩", categoryName: "肉類" }
+        ];
+        expensesData[2027] = {};
+        for(let m=0; m<3; m++) {
+            expensesData[2027][m] = [ { id: getId(), amount: 22000 + Math.floor(Math.random()*4000), store: "食費合計", date: `2027-${String(m+1).padStart(2,'0')}-15`, category: "🛒", categoryName: "食材" } ];
+        }
+    }
+
+    function prevMonthExpense() { expMonth--; if(expMonth < 0) { expMonth = 11; expYear--; } updateExpenseView(); }
+    function nextMonthExpense() { expMonth++; if(expMonth > 11) { expMonth = 0; expYear++; } updateExpenseView(); }
+    function prevYearGraph() { graphYear--; updateExpenseGraphOnly(); }
+    function nextYearGraph() { graphYear++; updateExpenseGraphOnly(); }
+
+    function getMonthTotal(year, month) {
+        if (!expensesData[year] || !expensesData[year][month]) return 0;
+        return expensesData[year][month].reduce((sum, item) => sum + item.amount, 0);
+    }
+
+    function updateExpenseView() {
+        document.getElementById('expense-month-display').innerText = `${expYear}年${expMonth + 1}月の食費`;
+        document.getElementById('budget-display').innerText = `¥${userBudget.toLocaleString()}`;
+        document.getElementById('budget-max-display').innerText = `¥${userBudget.toLocaleString()}`;
+
+        let currentExp = getMonthTotal(expYear, expMonth);
+        let remain = userBudget - currentExp;
+        let percent = Math.min(100, Math.round((currentExp / userBudget) * 100));
+
+        document.getElementById('expense-total-display').innerText = `¥${currentExp.toLocaleString()}`;
+        const remainEl = document.getElementById('expense-remain-display');
+        if(remain >= 0) { remainEl.innerText = `¥${remain.toLocaleString()}`; remainEl.style.color = '#D9534F'; } 
+        else { remainEl.innerText = `-¥${Math.abs(remain).toLocaleString()} (超過)`; remainEl.style.color = '#5C3A21'; }
+        
+        document.getElementById('expense-progress-bar').style.width = `${percent}%`;
+
+        graphYear = expYear;
+        updateExpenseGraphOnly();
+        renderExpenseList(expYear, expMonth);
+    }
+
+    function updateExpenseGraphOnly() {
+        document.getElementById('expense-year-display').innerText = `${graphYear}年の年間グラフ`;
+        let yearlyData = [];
+        for (let i = 0; i < 12; i++) yearlyData.push(getMonthTotal(graphYear, i));
+        renderExpenseGraph(yearlyData, graphYear);
+    }
+
+    function renderExpenseGraph(yearlyData, targetYear) {
+        const yAxisContainer = document.getElementById('expense-graph-yaxis');
+        const barsContainer = document.getElementById('expense-graph-bars');
+        barsContainer.innerHTML = '';
+        
+        const maxDataVal = Math.max(...yearlyData, userBudget, 10000);
+        const roundedMax = Math.ceil(maxDataVal / 10000) * 10000;
+        const halfMax = roundedMax / 2;
+
+        const formatYAxis = (val) => {
+            if (val >= 10000) return (val / 10000) + '万';
+            return val.toLocaleString();
+        };
+        
+        yAxisContainer.innerHTML = `<span>${formatYAxis(roundedMax)}</span><span>${formatYAxis(halfMax)}</span><span>¥0</span>`;
+        
+        for(let i=0; i<12; i++) {
+            let heightPercent = (yearlyData[i] / roundedMax) * 100;
+            if (heightPercent > 100) heightPercent = 100;
+            let barClass = (targetYear === expYear && i === expMonth) ? 'chart-bar current' : 'chart-bar';
+            barsContainer.innerHTML += `<div class="chart-bar-wrapper" onclick="showToast('${i+1}月の食費: ¥${yearlyData[i].toLocaleString()}')"><div class="${barClass}" style="height: ${heightPercent}%;"></div></div>`;
+        }
+    }
+
+    function renderExpenseList(year, month) {
+        const container = document.getElementById('expense-list-container');
+        if(!expensesData[year] || !expensesData[year][month] || expensesData[year][month].length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:var(--text-sub); padding: 20px 0;">出費の記録がありません</div>';
+            return;
+        }
+        let list = [...expensesData[year][month]];
+        list.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        let html = '';
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        list.forEach(item => {
+            const d = new Date(item.date);
+            const dateStr = `${d.getMonth()+1}月${d.getDate()}日(${days[d.getDay()]})`;
+            html += `
+            <div class="expense-item" style="padding-bottom: 12px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;" onclick="openEditExpenseModal('${item.id}', ${year}, ${month})">
+                <div class="dish-info" style="display: flex; align-items: center; gap: 10px; margin:0;">
+                    <div style="font-size: 20px; background: var(--tag-bg); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink:0;">${item.category}</div>
+                    <div><h4 style="font-size: 14px; margin-bottom: 2px;">${item.store}</h4><p style="font-size: 11px; color: var(--text-sub); margin:0;">${dateStr} ・ ${item.categoryName}</p></div>
+                </div>
+                <div style="font-weight: bold; font-size: 18px; flex-shrink:0;">¥${item.amount.toLocaleString()}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function openAddExpenseModal() {
+        document.getElementById('expense-modal-title').innerText = "出費の追加";
+        document.getElementById('expense-edit-id').value = "";
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        document.getElementById('expense-date').value = todayStr;
+        document.getElementById('expense-amount').value = "";
+        document.getElementById('expense-store').value = "";
+        document.getElementById('expense-category').selectedIndex = 0;
+
+        document.getElementById('expense-delete-btn').style.display = "none";
+        document.getElementById('expense-save-btn').innerText = "追加する";
+        openModal('add-expense-modal');
+    }
+
+    function openEditExpenseModal(id, year, month) {
+        const item = expensesData[year][month].find(exp => exp.id === id);
+        if(!item) return;
+
+        document.getElementById('expense-modal-title').innerText = "出費の編集";
+        document.getElementById('expense-edit-id').value = id;
+        document.getElementById('expense-edit-year').value = year;
+        document.getElementById('expense-edit-month').value = month;
+
+        document.getElementById('expense-date').value = item.date;
+        document.getElementById('expense-amount').value = item.amount;
+        document.getElementById('expense-store').value = item.store;
+        
+        const select = document.getElementById('expense-category');
+        const targetVal = `${item.category},${item.categoryName}`;
+        for(let i=0; i<select.options.length; i++) {
+            if(select.options[i].value === targetVal) { select.selectedIndex = i; break; }
+        }
+
+        document.getElementById('expense-delete-btn').style.display = "block";
+        document.getElementById('expense-save-btn').innerText = "保存する";
+        openModal('add-expense-modal');
+    }
+
+    function saveExpense() {
+        const dateVal = document.getElementById('expense-date').value;
+        const amountVal = parseInt(document.getElementById('expense-amount').value, 10);
+        const storeVal = document.getElementById('expense-store').value || "出費";
+        const catArray = document.getElementById('expense-category').value.split(',');
+        const editId = document.getElementById('expense-edit-id').value;
+        
+        if(!dateVal || isNaN(amountVal)) { showToast("日付と金額を正しく入力してください"); return; }
+        
+        const d = new Date(dateVal);
+        const y = d.getFullYear(); const m = d.getMonth();
+        
+        if(!expensesData[y]) expensesData[y] = {};
+        if(!expensesData[y][m]) expensesData[y][m] = [];
+        
+        if (editId) {
+            const oldY = parseInt(document.getElementById('expense-edit-year').value, 10);
+            const oldM = parseInt(document.getElementById('expense-edit-month').value, 10);
+            if (oldY !== y || oldM !== m) {
+                expensesData[oldY][oldM] = expensesData[oldY][oldM].filter(exp => exp.id !== editId);
+                expensesData[y][m].push({ id: editId, amount: amountVal, store: storeVal, date: dateVal, category: catArray[0], categoryName: catArray[1] });
+            } else {
+                const item = expensesData[y][m].find(exp => exp.id === editId);
+                if(item) { item.amount = amountVal; item.store = storeVal; item.date = dateVal; item.category = catArray[0]; item.categoryName = catArray[1]; }
+            }
+            showToast("支出を更新しました");
+        } else {
+            const newId = 'exp_' + Math.random().toString(36).substr(2, 9);
+            expensesData[y][m].push({ id: newId, amount: amountVal, store: storeVal, date: dateVal, category: catArray[0], categoryName: catArray[1] });
+            showToast("支出を追加しました");
+        }
+        
+        closeModal('add-expense-modal');
+        expYear = y; expMonth = m;
+        updateExpenseView();
+    }
+
+    function deleteExpense() {
+        const editId = document.getElementById('expense-edit-id').value;
+        const oldY = parseInt(document.getElementById('expense-edit-year').value, 10);
+        const oldM = parseInt(document.getElementById('expense-edit-month').value, 10);
+        
+        if(editId && expensesData[oldY] && expensesData[oldY][oldM]) {
+            expensesData[oldY][oldM] = expensesData[oldY][oldM].filter(exp => exp.id !== editId);
+            showToast("支出を削除しました");
+            closeModal('add-expense-modal');
+            expYear = oldY; expMonth = oldM;
+            updateExpenseView();
+        }
+    }
+
+    function saveBudget() {
+        const val = parseInt(document.getElementById('budget-input').value, 10);
+        if(isNaN(val) || val <= 0) { showToast("正しい金額を入力してください"); return; }
+        userBudget = val;
+        showToast("予算を更新しました");
+        closeModal('budget-modal');
+        updateExpenseView();
+    }
+
+    // --- 検索・汎用 UI ---
+    function fillSearch(text) { document.getElementById('search-input').value = text; }
+    function fillSearchAndExecute(text) { document.getElementById('search-input').value = text; executeSearch(); }
+    function clearSearch() { navToCalendar(); }
+
+    function executeSearch() {
+        const input = document.getElementById('search-input').value || 'すべての料理';
+        document.getElementById('search-keyword-display').textContent = input;
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.getElementById('search-results-view').classList.add('active');
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        closeModal('search-modal');
+        showToast('検索結果を表示します');
+    }
+
+    function switchSubView(viewId, element) {
+        const parentView = element.closest('.view');
+        parentView.querySelectorAll('.sub-view').forEach(el => el.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        element.parentElement.querySelectorAll('.sub-tab').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    function handleMainPhotoUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewContainer = document.getElementById('photo-preview-container');
+                const previewImg = document.getElementById('photo-preview');
+                previewImg.src = e.target.result;
+                previewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleSubPhotoUpload(event, inputElement) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const container = inputElement.parentElement;
+                const img = container.querySelector('.dish-sub-img');
+                const icon = container.querySelector('.placeholder-icon');
+                if(icon) icon.style.display = 'none';
+                img.src = e.target.result;
+                img.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function addDishRecord() {
+        const container = document.getElementById('dish-record-list-container');
+        const newItem = document.createElement('div');
+        newItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color);">
+                <div style="flex: 1; padding-right: 15px;">
+                    <h4 contenteditable="true" data-placeholder="料理名を入力" style="font-size: 14px; margin-bottom: 5px;"></h4>
+                    <p contenteditable="true" data-placeholder="材料を入力" style="font-size: 11px; color: var(--text-sub); line-height: 1.4;"></p>
+                </div>
+                <label style="width: 50px; height: 50px; border-radius: 8px; background: var(--tag-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; flex-shrink: 0;">
+                    <span class="placeholder-icon" style="color:var(--text-sub); font-size:20px;">📷</span>
+                    <img src="" class="dish-sub-img" style="display:none; width: 100%; height: 100%; object-fit: cover;">
+                    <input type="file" accept="image/*" style="display:none" onchange="handleSubPhotoUpload(event, this)">
+                </label>
+            </div>
+        `;
+        container.appendChild(newItem.firstElementChild);
+    }
+
+    function selectTime(element) {
+        const btns = element.parentElement.querySelectorAll('.time-btn');
+        btns.forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--text-sub)';
+            btn.style.fontWeight = 'normal';
+            btn.style.background = 'transparent';
+            btn.style.boxShadow = 'none';
+        });
+        element.classList.add('active');
+        element.style.color = 'var(--text-main)';
+        element.style.fontWeight = 'bold';
+        element.style.background = 'var(--white)';
+        element.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)';
+    }
+
+    function saveRecord() { showToast('記録を保存しました'); closeModal('record-modal'); }
+
+    function changeTheme() {
+        const root = document.documentElement;
+        const statusEl = document.getElementById('theme-status');
+        if (statusEl.innerText.includes('ブラウン')) {
+            root.style.setProperty('--text-main', '#3E5C3A'); root.style.setProperty('--accent-color', '#A5D495'); root.style.setProperty('--bg-color', '#F3FAF0'); root.style.setProperty('--input-bg', '#EBF5E6');
+            statusEl.innerText = 'グリーン >'; showToast('グリーンテーマに変更しました');
+        } else {
+            root.style.setProperty('--text-main', '#5C3A21'); root.style.setProperty('--accent-color', '#D4B895'); root.style.setProperty('--bg-color', '#FAF6F0'); root.style.setProperty('--input-bg', '#F5EFE6');
+            statusEl.innerText = 'ブラウン >'; showToast('ブラウンテーマに変更しました');
+        }
+    }
+
+    function renderCalendar() {
+        const year = currentViewDate.getFullYear(); const month = currentViewDate.getMonth();
+        const displayEl = document.getElementById('current-month-display');
+        if(!displayEl) return;
+        displayEl.textContent = (month + 1) + '月';
+        renderMonthSelector(); 
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+        const photoGrid = document.getElementById('photo-grid');
+        const textGrid = document.getElementById('text-grid');
+        if(!photoGrid || !textGrid) return;
+        
+        photoGrid.innerHTML = ''; textGrid.innerHTML = '';
+
+        const dummyImages = [ "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=150&h=150", "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=150&h=150", "https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=150&h=150" ];
+
+        let dayCount = 1; let nextMonthDayCount = 1;
+
+        for (let i = 0; i < 42; i++) {
+            let displayNum = ''; let isCurrentMonth = false; let isToday = false;
+            if (i < firstDay) { displayNum = daysInPrevMonth - firstDay + i + 1; } 
+            else if (dayCount <= daysInMonth) { displayNum = dayCount; isCurrentMonth = true;
+                if (year === today.getFullYear() && month === today.getMonth() && dayCount === today.getDate()) isToday = true; dayCount++;
+            } else { displayNum = nextMonthDayCount++; }
+
+            const colorStyle = isCurrentMonth ? "" : "color: #CCC;";
+            const todayStyle = isToday ? "background-color: var(--text-main); color: var(--white); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;" : "";
+            
+            let hasPhoto = isCurrentMonth && (displayNum % 3 === 0 || displayNum % 5 === 0);
+            let photoHtml = hasPhoto ? `<div class="day-img-wrap"><img src="${dummyImages[displayNum%3]}"></div>` : '';
+
+            photoGrid.innerHTML += `<div class="day" onclick="openModal('record-modal')"><div class="day-num-container"><span class="day-num" style="${colorStyle} ${todayStyle}">${displayNum}</span></div>${photoHtml}</div>`;
+            
+            let menuHtml = '';
+            if (isCurrentMonth && displayNum % 2 === 0) { menuHtml = `<div class="menu-item menu-morning">☀朝 トースト</div><div class="menu-item menu-noon">🌤昼 パスタ</div><div class="menu-item menu-night">🌙夕 麻婆豆腐</div>`; }
+            textGrid.innerHTML += `<div class="day" onclick="openModal('record-modal')"><div class="day-num-container"><span class="day-num" style="${colorStyle} ${todayStyle}">${displayNum}</span></div><div style="padding: 2px;">${menuHtml}</div></div>`;
+        }
+    }
+
+    function renderMonthSelector() {
+        const grid = document.getElementById('month-grid'); 
+        if(!grid) return;
+        grid.innerHTML = '';
+        for(let i=1; i<=12; i++) {
+            const isCurrent = (currentViewDate.getMonth() + 1 === i);
+            const className = isCurrent ? 'month-btn current' : 'month-btn';
+            grid.innerHTML += `<div class="${className}" onclick="changeMonth(${i-1})">${i}月</div>`;
+        }
+    }
+
+    function changeMonth(monthIndex) { currentViewDate.setMonth(monthIndex); renderCalendar(); closeModal('month-modal'); }
+    function switchView(viewId, tabElement) {
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        const targetView = document.getElementById(viewId);
+        if(targetView) targetView.classList.add('active');
+        
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        if(tabElement) tabElement.classList.add('active');
+    }
+    function navToCalendar() { switchView('photo-calendar', document.querySelectorAll('.tab')[0]); }
+
+    function openModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) modal.classList.add('active'); 
+    }
+    function closeModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) modal.classList.remove('active'); 
+    }
+    function closeModalOnBgClick(e, id) { if(e.target.id === id) closeModal(id); }
+
+    let toastTimeout;
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        if(!toast) return;
+        toast.textContent = msg; toast.style.display = 'block'; toast.style.opacity = '1';
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 2000);
+    }
+</script>
+
+</body>
+</html>
