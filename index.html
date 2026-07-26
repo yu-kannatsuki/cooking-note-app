@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>料理ノートアプリ - LocalStorage保存版</title>
+    <title>料理ノートアプリ - 完全版</title>
     <style>
         :root {
             --bg-color: #FAF6F0;
@@ -21,35 +21,53 @@
             --input-bg: #F5EFE6;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; color: var(--text-main); -webkit-tap-highlight-color: transparent; }
-        html, body { overflow: hidden; width: 100%; height: 100%; }
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            color: var(--text-main); -webkit-tap-highlight-color: transparent;
+        }
+
         body { background-color: #EFEFEF; display: flex; justify-content: center; }
 
         .app-container {
-            width: 100%; max-width: 480px; background-color: var(--bg-color); height: 100dvh;
-            position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden;
+            width: 100%; max-width: 480px; background-color: var(--bg-color);
+            height: 100dvh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; overflow: hidden;
         }
 
         /* Header */
-        header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-color); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
+        header {
+            padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; background-color: var(--bg-color); position: sticky; top: 0; z-index: 20; flex-shrink: 0;
+        }
         .month-selector { font-size: 24px; font-weight: bold; cursor: pointer; padding: 10px 15px; margin-left: -10px; border-radius: 8px; transition: background 0.2s; }
         .month-selector:active { background: var(--hover-bg); }
         .header-icons { display: flex; gap: 5px; }
-        .header-icons span { font-size: 22px; cursor: pointer; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; }
+        .header-icons span {
+            font-size: 22px; cursor: pointer; width: 44px; height: 44px; display: flex;
+            align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;
+        }
         .header-icons span:active { background: var(--hover-bg); }
 
         /* Tabs */
         .tabs { 
-            display: flex; flex-wrap: nowrap; background-color: var(--white); border-bottom: 1px solid var(--border-color); z-index: 15; flex-shrink: 0;
+            display: flex; flex-wrap: nowrap; background-color: var(--white); 
+            border-bottom: 1px solid var(--border-color); z-index: 15; flex-shrink: 0;
             overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
         }
         .tabs::-webkit-scrollbar { display: none; }
-        .tab { padding: 14px 12px; flex: 0 0 auto; min-width: 16.6%; text-align: center; font-weight: bold; font-size: 13px; cursor: pointer; color: var(--text-sub); border-bottom: 3px solid transparent; transition: background 0.2s; white-space: nowrap; }
+        .tab {
+            padding: 14px 12px; flex: 0 0 auto; min-width: 16.6%; text-align: center; font-weight: bold; font-size: 13px;
+            cursor: pointer; color: var(--text-sub); border-bottom: 3px solid transparent; transition: background 0.2s; white-space: nowrap;
+        }
         .tab:active { background: #F9F9F9; }
         .tab.active { color: var(--text-main); border-bottom: 3px solid var(--text-main); }
 
         /* Content Area */
-        .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; padding-bottom: 100px; width: 100%; -webkit-overflow-scrolling: touch; }
+        .content { 
+            flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; padding-bottom: 100px; 
+            width: 100%; -webkit-overflow-scrolling: touch;
+        }
         .view { display: none; width: 100%; animation: fadeIn 0.2s ease-out; }
         .view.active { display: block; }
 
@@ -60,22 +78,25 @@
         .day:active { background-color: #FAFAFA; }
         .day-num-container { padding: 2px; flex-shrink: 0; }
         .day-num { padding: 2px 4px; color: var(--text-sub); display: inline-block; }
+        
         .day-img-wrap { flex: 1; width: 100%; min-height: 0; overflow: hidden; }
         .day-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
         
         .menu-item { font-size: 8px; padding: 2px; margin: 1px; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 2;}
-        .menu-item.morning { background-color: var(--morning); }
-        .menu-item.noon { background-color: var(--noon); }
-        .menu-item.night { background-color: var(--night); }
+        .menu-morning { background-color: var(--morning); }
+        .menu-noon { background-color: var(--noon); }
+        .menu-night { background-color: var(--night); }
 
         /* Detail View */
         .detail-card { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .detail-img { width: 100%; height: 200px; object-fit: cover; }
+        .detail-img-container { width: 100%; height: 200px; position: relative; background: var(--tag-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
+        .detail-img { width: 100%; height: 100%; object-fit: cover; }
         .detail-content { padding: 15px; }
         .detail-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
         .detail-section { margin-bottom: 15px; background: var(--tag-bg); padding: 12px; border-radius: 8px; }
+        .section-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--text-sub); }
 
-        /* Sub-Tabs (Materials, Inventory) */
+        /* Sub-Tabs */
         .sub-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
         .sub-tab { flex: 1; text-align: center; padding-bottom: 10px; cursor: pointer; color: var(--text-sub); border-bottom: 2px solid transparent; font-weight: bold; margin-bottom: -1px; transition: 0.2s; }
         .sub-tab.active { color: var(--text-main); border-bottom: 2px solid var(--text-main); }
@@ -106,7 +127,7 @@
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .modal-close-left { display: inline-flex; width: 40px; height: 40px; justify-content: center; align-items: center; background: var(--white); border-radius: 50%; font-size: 20px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .modal-close-left:active { background-color: var(--hover-bg); }
-        .modal-close { position: absolute; top: 10px; right: 10px; font-size: 24px; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-sub); border-radius: 50%; }
+        .modal-close { position: absolute; top: 10px; right: 10px; font-size: 24px; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-sub); }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; color: var(--text-main); }
 
         /* UI Blocks */
@@ -135,12 +156,11 @@
         .inv-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .inv-icon { font-size: 24px; background: var(--tag-bg); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; flex-shrink: 0; }
         .inv-info { flex: 1; margin-left: 12px; }
-        .inv-info h4 { font-size: 16px; margin-bottom: 4px; }
-        .inv-info p { font-size: 12px; color: var(--text-sub); margin-bottom: 2px; }
+        .inv-info h4 { font-size: 16px; margin-bottom: 4px; outline: none; }
+        .inv-info p { font-size: 12px; color: var(--text-sub); margin-bottom: 2px; outline: none; }
         .inv-controls { display: flex; align-items: center; gap: 8px; }
         .inv-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-color); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; color: var(--text-main); }
-        .inv-amount-text { font-size: 16px; font-weight: bold; width: 50px; text-align: center; background: transparent; border: none; border-bottom: 1px solid transparent; outline: none; color: var(--text-main); padding: 2px 0; transition: 0.2s;}
-        .inv-amount-text:focus { border-bottom: 1px solid var(--text-main); }
+        .inv-amount-text { font-size: 16px; font-weight: bold; width: 50px; text-align: center; background: transparent; border: none; border-bottom: 1px solid transparent; outline: none; color: var(--text-main); padding: 2px 0; }
         
         .toast { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(92, 58, 33, 0.9); color: white; padding: 12px 24px; border-radius: 25px; font-size: 14px; display: none; z-index: 200; white-space: nowrap; }
         
@@ -195,8 +215,11 @@
             <div class="calendar-grid" id="text-grid"></div>
         </div>
 
-        <!-- View 3: 詳細 (最新の記録を表示) -->
+        <!-- View 3: 詳細 (画像変更・新規追加ボタン対応) -->
         <div id="detail-view" class="view">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                <button style="background: var(--text-main); color: var(--white); padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: bold; border: none; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1);" onclick="openRecordModal('')">＋ 新規追加・投稿</button>
+            </div>
             <div id="detail-content-area"></div>
         </div>
 
@@ -334,8 +357,7 @@
                     <span style="font-size: 16px; margin-left: 2px; color: var(--white);">×</span>
                 </div>
             </div>
-            <div class="summary-grid" id="search-results-container">
-            </div>
+            <div class="summary-grid" id="search-results-container"></div>
         </div>
     </div>
 
@@ -529,13 +551,14 @@
         records: {
             "2026-07-03": { time: "🌙夕", mainPhoto: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=150&h=150", dishes: [{name: "麻婆豆腐", ingredients: "豚ひき肉, 豆腐..."}], memo: "" },
             "2026-07-16": { time: "🌤昼", mainPhoto: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=150&h=150", dishes: [{name: "サラダ", ingredients: "ほうれん草..."}], memo: "" },
-            "2026-07-25": { time: "🌙夕", mainPhoto: "https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=150&h=150", dishes: [{name: "中華スープ", ingredients: "鶏がら..."}], memo: "おいしくできた！" }
+            "2026-07-25": { time: "🌙夕", mainPhoto: "https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&q=80&w=150&h=150", dishes: [{name: "中華スープ", ingredients: "鶏がらスープ..."}], memo: "おいしくできた！" }
         }
     };
 
     const today = new Date(2026, 6, 25);
     let currentViewDate = new Date(today);
     let expYear = 2026; let expMonth = 6; let graphYear = 2026;
+    let targetDetailDate = "2026-07-25";
 
     const foodEmojis = [
         "🍞","🥐","🥖","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥚","🍳","🥘","🍲","🥗","🧈","🍝",
@@ -570,7 +593,6 @@
 
     function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
 
-    // --- 画像圧縮ヘルパー (LocalStorage容量対策) ---
     function resizeImageAndCallback(file, callback) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -584,15 +606,13 @@
                 canvas.height = img.height * scaleSize;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
-                callback(dataUrl);
+                callback(canvas.toDataURL('image/jpeg', 0.6));
             }
             img.src = e.target.result;
         }
         reader.readAsDataURL(file);
     }
 
-    // --- 設定 ---
     function applySettings() {
         const root = document.documentElement;
         const statusEl = document.getElementById('theme-status');
@@ -609,7 +629,7 @@
         applySettings(); saveData(); showToast('テーマを変更しました');
     }
 
-    // --- 記録モーダルとカレンダー保存 ---
+    // --- 記録モーダル ---
     function openRecordModal(dateStr) {
         if(!dateStr) {
             const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0');
@@ -683,6 +703,7 @@
             appData.records[date] = { time, mainPhoto, dishes, memo };
         }
         
+        targetDetailDate = date;
         saveData();
         showToast('記録を保存しました');
         closeModal('record-modal');
@@ -760,36 +781,79 @@
         }
     }
 
+    // --- 詳細画面（画像アップロード＆直接編集＆追加対応） ---
     function updateDetailView() {
         const area = document.getElementById('detail-content-area');
         if(!area) return;
         
-        let latestDate = null; let latestRec = null;
-        Object.keys(appData.records).sort().reverse().forEach(date => {
-            if(!latestRec) { latestDate = date; latestRec = appData.records[date]; }
-        });
+        let record = appData.records[targetDetailDate];
+        if (!record) {
+            let latestDate = null;
+            Object.keys(appData.records).sort().reverse().forEach(date => {
+                if(!record) { latestDate = date; record = appData.records[date]; }
+            });
+            if(record) targetDetailDate = latestDate;
+        }
 
-        if(!latestRec || !latestRec.dishes || latestRec.dishes.length === 0) {
+        if(!record || !record.dishes || record.dishes.length === 0) {
             area.innerHTML = '<div style="text-align:center; color:var(--text-sub); padding:40px;">記録がありません</div>';
             return;
         }
 
-        const dish = latestRec.dishes[0];
-        const photo = latestRec.mainPhoto || dish.photo || "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400";
+        const dish = record.dishes[0];
+        const photo = record.mainPhoto || dish.photo || "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400";
         
         area.innerHTML = `
             <div class="detail-card">
-                <img src="${photo}" class="detail-img">
+                <label class="detail-img-container" title="タップして写真を変更">
+                    <img src="${photo}" class="detail-img" id="detail-main-img">
+                    <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📷 写真を変更</div>
+                    <input type="file" accept="image/*" style="display:none;" onchange="handleDetailPhotoUpload(event)">
+                </label>
                 <div class="detail-content">
-                    <div class="detail-title">${dish.name || '料理名なし'}</div>
+                    <div class="detail-title" contenteditable="true" data-placeholder="料理名" onblur="updateDetailField('title', this.innerText)">${dish.name || ''}</div>
                     <div class="detail-section">
                         <div class="section-title">材料 ✏️</div>
-                        <div style="font-size: 14px; line-height: 1.6;">${dish.ingredients || '未登録'}</div>
+                        <div contenteditable="true" data-placeholder="材料を入力..." style="font-size: 14px; line-height: 1.6;" onblur="updateDetailField('ingredients', this.innerText)">${dish.ingredients || ''}</div>
                     </div>
-                    ${latestRec.memo ? `<div class="detail-section"><div class="section-title">メモ ✏️</div><div style="font-size: 14px;">${latestRec.memo}</div></div>` : ''}
+                    <div class="detail-section">
+                        <div class="section-title">メモ ✏️</div>
+                        <div contenteditable="true" data-placeholder="メモを入力..." style="font-size: 14px; line-height: 1.6;" onblur="updateDetailField('memo', this.innerText)">${record.memo || ''}</div>
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    function handleDetailPhotoUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            resizeImageAndCallback(file, (dataUrl) => {
+                if(!appData.records[targetDetailDate]) return;
+                appData.records[targetDetailDate].mainPhoto = dataUrl;
+                saveData();
+                renderCalendar();
+                updateDetailView();
+                showToast("写真を変更しました");
+            });
+        }
+    }
+
+    function updateDetailField(field, value) {
+        if(!appData.records[targetDetailDate]) return;
+        const rec = appData.records[targetDetailDate];
+        if (field === 'title') {
+            if(!rec.dishes[0]) rec.dishes[0] = {};
+            rec.dishes[0].name = value.trim();
+        } else if (field === 'ingredients') {
+            if(!rec.dishes[0]) rec.dishes[0] = {};
+            rec.dishes[0].ingredients = value.trim();
+        } else if (field === 'memo') {
+            rec.memo = value.trim();
+        }
+        saveData();
+        renderCalendar();
+        showToast("変更を保存しました");
     }
 
     // --- 在庫管理 ---
@@ -798,7 +862,10 @@
             const container = document.getElementById(listId);
             container.innerHTML = '';
             const items = appData.inventory[key];
-            if(!items || items.length === 0) return;
+            if(!items || items.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-sub); padding:10px;">在庫がありません</div>';
+                return;
+            }
             
             items.forEach((item, index) => {
                 const isLast = index === items.length - 1;
@@ -1107,8 +1174,6 @@
         element.classList.add('active');
     }
     function navToCalendar() { switchView('photo-calendar', document.querySelectorAll('.tab')[0]); }
-    function goToToday() { currentViewDate = new Date(today); renderCalendar(); showToast("今日のカレンダーに戻りました"); }
-    function shareAction() { if (navigator.share) { navigator.share({ title: '料理ノート', url: window.location.href }).catch(console.error); } else { showToast("共有メニューを開きます"); } }
 
     function openModal(id) { const modal = document.getElementById(id); if(modal) modal.classList.add('active'); }
     function closeModal(id) { const modal = document.getElementById(id); if(modal) modal.classList.remove('active'); }
